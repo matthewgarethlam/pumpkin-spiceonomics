@@ -1,0 +1,92 @@
+---
+title: "psl houseprice"
+author: "Matthew Lam"
+date: "2022-10-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## load data
+```{r}
+library(tidyverse)
+psldata <- read.csv("psldata.csv")
+
+psldata_ldn <- psldata %>% filter(Local.authority.name=='City of London' | Local.authority.name=="Westminster"|Local.authority.name=="Kensington and Chelsea" | Local.authority.name=="Hammersmith and Fulham" | Local.authority.name== "Wandsworth" | Local.authority.name=="Lambeth" | Local.authority.name=="Southwark" | Local.authority.name=="Tower Hamlets" | Local.authority.name=="Hackney" | Local.authority.name=="Islington" | Local.authority.name=="Camden" | Local.authority.name=="Brent" | Local.authority.name=="Ealing" | Local.authority.name== "Hounslow" | Local.authority.name== "Richmond upon Thames" | Local.authority.name== "Kingston upon Thames" |Local.authority.name== "Merton" | Local.authority.name== "Sutton" | Local.authority.name=="Croydon" | Local.authority.name== "Bromley" | Local.authority.name=="Lewisham"| Local.authority.name=="Greenwich" | Local.authority.name== "Bexley" | Local.authority.name=="Havering" | Local.authority.name=="Barking and Dagenham" | Local.authority.name=="Redbridge" | Local.authority.name=="Newham" | Local.authority.name=="Waltham Forest" | Local.authority.name=="Haringey" | Local.authority.name=="Enfield" | Local.authority.name=="Barnet" | Local.authority.name=="Harrow" | Local.authority.name=="Hillingdon") %>% select(	
+LSOA.code, LSOA.name,Local.authority.name,  Year.ending.Mar.2022)
+
+
+#calculations
+psldata_ldn$nr_psl <- (as.numeric(psldata_ldn$Year.ending.Mar.2022)*0.15)/3.65 #15% downpayment
+
+range(psldata_ldn$nr_psl, na.rm=T)
+```
+## Get Streetnetwork 
+```{r}
+library(here)
+library(magrittr)
+library(osmdata)
+library(dodgr)
+library(sf)
+library(expss)
+library(tmap)
+library(osmextract)
+
+
+
+# Load Towns and Cities boundary dataset and subset to Portsmouth
+london_roads<- st_read("~/Google Drive/GIS Portfolio/psl house price/gis_osm_roads_free_1.shp")
+
+
+london_roads_edges <- london_roads$osm_lines[, c("osm_id", "name", "highway", "maxspeed", 
+    "oneway")]
+
+
+plot(london_roads$geometry)
+```
+
+
+
+## LSOA Shapefiles
+```{r}
+
+lsoa <- st_read("~/Google Drive/GIS Portfolio/psl house price/LSOA_2011_London_gen_MHW.shp")
+
+colnames(psldata_ldn)[1] <- "LSOA11CD"
+
+# join data
+psl_sdf <- left_join(lsoa, psldata_ldn, by = c(LSOA11CD = "LSOA11CD"))
+
+
+
+pal <- c("#fde0c5","#facba6","#f8b58b","#f59e72","#f2855d","#ef6a4c","#eb4a40")
+
+
+#simple map
+psl <- tm_shape(lsoa) + tm_polygons("gray", border.col = "gray") + tm_shape(psl_sdf) + 
+    tm_polygons(col = "nr_psl", n = 5, style = "jenks", title = "Nr of Pumpkin Spice Lattes", 
+        palette = pal, border.col = "transparent") + tm_layout(legend.outside = TRUE, legend.outside.position = "right", 
+    legend.title.size = 1, legend.title.fontface = 2)
+
+psl
+
+
+
+tmap_save(psl, "psl.pdf")
+```
+
+
+## Roads
+```{r}
+sf_use_s2(FALSE)
+st_crs(lsoa) = st_crs(london_roads)
+
+
+
+```
+
+
+
+
